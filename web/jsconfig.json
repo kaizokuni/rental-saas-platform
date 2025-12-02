@@ -1,0 +1,30 @@
+{
+    "compilerOptions": {
+        "target": "esnext",
+        "module": "esnext",
+        "moduleResolution": "bundler",
+        "strict": false,
+        "jsx": "preserve",
+        "importHelpers": true,
+        "baseUrl": ".",
+        "paths": {
+            "@/*": [
+                "src/*"
+            ]
+        },
+        "lib": [
+            "esnext",
+            "dom",
+            "dom.iterable",
+            "scripthost"
+        ]
+    },
+    "include": [
+        "src/**/*.js",
+        "src/**/*.vue",
+        "src/**/*.json"
+    ],
+    "exclude": [
+        "node_modules"
+    ]
+}

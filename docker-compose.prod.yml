@@ -1,0 +1,63 @@
+services:
+  traefik:
+    image: traefik:v3.0
+    command:
+      - "--api.insecure=false"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.myresolver.acme.httpchallenge=true"
+      - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
+      # REPLACE WITH YOUR EMAIL
+      - "--certificatesresolvers.myresolver.acme.email=admin@yourdomain.com"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "./letsencrypt:/letsencrypt"
+    networks:
+      - rental-net
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.app.rule=HostRegexp(`{subdomain:[a-z0-9]+}.yourdomain.com`)"
+      - "traefik.http.routers.app.entrypoints=websecure"
+      - "traefik.http.routers.app.tls.certresolver=myresolver"
+    environment:
+      - DB_HOST=postgres
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=rental_saas
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+      - JWT_SECRET=${JWT_SECRET}
+      - FRONTEND_URL=https://app.yourdomain.com
+    depends_on:
+      - postgres
+    networks:
+      - rental-net
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=rental_saas
+    volumes:
+      - pg_prod_data:/var/lib/postgresql/data
+    networks:
+      - rental-net
+
+volumes:
+  pg_prod_data:
+
+
+networks:
+  rental-net:

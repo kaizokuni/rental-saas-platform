@@ -1,0 +1,38 @@
+# Stage 1: Builder
+FROM golang:1.22-alpine AS builder
+
+WORKDIR /app
+
+# Install git and ssl certificates
+RUN apk add --no-cache git ca-certificates
+
+# Copy go mod and sum files
+COPY go.mod go.sum ./
+
+# Download all dependencies. Dependencies will be cached if the go.mod and go.sum files are not changed
+RUN go mod download
+
+# Copy the source from the current directory to the Working Directory inside the container
+COPY . .
+
+# Build the Go app
+# -ldflags="-s -w" strips debug information to reduce binary size
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o main ./cmd/api
+
+# Stage 2: Runner
+# Use distroless for a minimal image (contains only what's needed to run the app)
+FROM gcr.io/distroless/static-debian12
+
+WORKDIR /app
+
+# Copy the Pre-built binary from the builder stage
+COPY --from=builder /app/main .
+
+# Copy SSL certificates from builder (critical for Stripe/AWS)
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+
+# Expose port 8080 to the outside world
+EXPOSE 8080
+
+# Command to run the executable
+CMD ["./main"]
